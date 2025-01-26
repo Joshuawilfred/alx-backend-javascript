@@ -1,31 +1,49 @@
-const fs = require('fs');
+const fs = require("fs");
 
-async function countStudents(path) {
-  let data;
-  try {
-    data = await fs.promises.readFile(path, 'utf8');
-  } catch (error) {
-    throw new Error('Cannot load the database');
+const getListDataFromCsvFile = (csvData) => {
+  const rows = csvData.trim().split("\n");
+  return rows.slice(1).map((row) => row.split(","));
+};
+
+const assignNamesWithFields = (results) => {
+  const fieldsWithFirstName = {};
+
+  results.forEach((entry) => {
+    const field = entry[3];
+    const firstName = entry[0];
+
+    if (!fieldsWithFirstName[field]) {
+      fieldsWithFirstName[field] = [];
+    }
+
+    fieldsWithFirstName[field].push(firstName);
+  });
+
+  return fieldsWithFirstName;
+};
+
+const printFieldStats = (fieldsWithName) => {
+  for (const [key, value] of Object.entries(fieldsWithName)) {
+    const list = value.join(", ");
+    console.log(`Number of students in ${key}: ${value.length}. List: ${list}`);
   }
-  const students = data.split('\n')
-    .map((student) => student.split(','))
-    .filter((student) => student.length === 4 && student[0] !== 'firstname')
-    .map((student) => ({
-      firstName: student[0],
-      lastName: student[1],
-      age: student[2],
-      field: student[3],
-    }));
-  const csStudents = students
-    .filter((student) => student.field === 'CS')
-    .map((student) => student.firstName);
-  const sweStudents = students
-    .filter((student) => student.field === 'SWE')
-    .map((student) => student.firstName);
-  console.log(`Number of students: ${students.length}`);
-  console.log(`Number of students in CS: ${csStudents.length}. List: ${csStudents.join(', ')}`);
-  console.log(`Number of students in SWE: ${sweStudents.length}. List: ${sweStudents.join(', ')}`);
-  return { students, csStudents, sweStudents };
-}
+};
+
+const countStudents = (path) =>
+  new Promise((resolve, reject) => {
+    fs.readFile(path, "utf-8", (err, data) => {
+      if (err) {
+        reject(new Error("Cannot load the database"));
+        return;
+      }
+
+      const results = getListDataFromCsvFile(data);
+      const fieldsWithFirstName = assignNamesWithFields(results);
+
+      console.log(`Number of students: ${results.length}`);
+      printFieldStats(fieldsWithFirstName);
+      resolve();
+    });
+  });
 
 module.exports = countStudents;
